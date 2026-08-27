@@ -1,0 +1,30 @@
+# Databricks
+*.dbfs
+.databricks/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Environment
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files (don't commit raw data)
+*.csv
+*.json
+*.parquet
+*.delta
+*.zip

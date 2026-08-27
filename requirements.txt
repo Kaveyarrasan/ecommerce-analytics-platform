@@ -1,0 +1,7 @@
+# Python dependencies for E-Commerce Analytics Platform
+# Install via: %pip install -r requirements.txt
+
+pytest>=7.0.0          # Unit testing framework
+great-expectations>=0.18.0  # Data quality validation (optional)
+pandas>=2.0.0         # Data manipulation
+pyspark>=3.4.0        # Spark Python API
