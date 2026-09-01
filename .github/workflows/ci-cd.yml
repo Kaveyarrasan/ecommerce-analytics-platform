@@ -1,0 +1,90 @@
+# ============================================================================
+# GitHub Actions CI/CD Pipeline for E-Commerce Analytics Platform
+# ============================================================================
+# This workflow replaces traditional Jenkins pipelines with GitHub Actions
+# + Declarative Automation Bundles (DABs) for Databricks-native CI/CD.
+#
+# Pipeline stages:
+#   1. Code checkout from GitHub
+#   2. Validate DABs configuration
+#   3. Deploy to dev environment
+#   4. Run the ETL pipeline job (Bronze → Silver → Gold → Tests)
+#   5. Report results
+#
+# Architecture Decision (ADR-005): GitHub Actions + DABs replaces Jenkins
+# ============================================================================
+
+name: E-Commerce Analytics CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  DATABRICKS_HOST: https://dbc-5c760729-3532.cloud.databricks.com
+  BUNDLE_TARGET: dev  # Use 'prod' for production deployments
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout code from GitHub
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Step 3: Install Databricks CLI
+      - name: Install Databricks CLI
+        run: |
+          pip install databricks-cli
+          databricks --version
+
+      # Step 4: Configure Databricks authentication
+      # Uses DATABRICKS_TOKEN secret stored in GitHub Secrets
+      - name: Configure Databricks CLI
+        run: |
+          echo "[DEFAULT]" > ~/.databrickscfg
+          echo "host = ${{ env.DATABRICKS_HOST }}" >> ~/.databrickscfg
+          echo "token = ${{ secrets.DATABRICKS_TOKEN }}" >> ~/.databrickscfg
+
+      # Step 5: Validate DABs configuration
+      - name: Validate bundle
+        run: |
+          echo "🔍 Validating DABs configuration..."
+          databricks bundle validate -t ${{ env.BUNDLE_TARGET }}
+          echo "✅ Bundle validation passed!"
+
+      # Step 6: Deploy bundle to target environment
+      - name: Deploy bundle
+        run: |
+          echo "🚀 Deploying to ${{ env.BUNDLE_TARGET }} environment..."
+          databricks bundle deploy -t ${{ env.BUNDLE_TARGET }}
+          echo "✅ Deployment complete!"
+
+      # Step 7: Run the ETL pipeline job
+      - name: Run ETL pipeline
+        run: |
+          echo "🔄 Running E-Commerce ETL Pipeline..."
+          databricks bundle run -t ${{ env.BUNDLE_TARGET }} ecommerce_etl_pipeline
+          echo "✅ ETL Pipeline completed!"
+
+      # Step 8: Report results
+      - name: Report deployment status
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "📊 CI/CD Pipeline Summary"
+          echo "=========================================="
+          echo "  Target: ${{ env.BUNDLE_TARGET }}"
+          echo "  Status: ${{ job.status }}"
+          echo "  Commit: ${{ github.sha }}"
+          echo "  Branch: ${{ github.ref_name }}"
+          echo "=========================================="

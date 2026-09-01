@@ -1,0 +1,138 @@
+# yaml-language-server: $schema=bundle_config_schema.json
+# ============================================================================
+# Declarative Automation Bundle (DAB) - E-Commerce Analytics Platform
+# ============================================================================
+# This file defines the CI/CD pipeline for the E-Commerce Analytics Platform.
+# It replaces traditional Jenkins pipelines with Databricks-native automation.
+#
+# Architecture Decision (ADR-005): Use DABs for CI/CD
+# - Native Databricks integration (no external CI/CD server needed)
+# - YAML-based configuration (easy to maintain and version control)
+# - Supports dev/prod targets for environment isolation
+# - Integrates with GitHub Actions for automated deployment
+#
+# Usage:
+#   databricks bundle validate -t dev          # Validate configuration
+#   databricks bundle deploy -t dev            # Deploy to dev environment
+#   databricks bundle run -t dev ecommerce_job # Run the pipeline job
+# ============================================================================
+
+bundle:
+  name: ecommerce-analytics-platform
+
+# ============================================
+# VARIABLES (Configurable per environment)
+# ============================================
+variables:
+  catalog_name:
+    description: "Unity Catalog catalog name"
+    default: "workspace"
+  schema_name:
+    description: "Unity Catalog schema name"
+    default: "ecommerce_project"
+
+# ============================================
+# RESOURCES (Jobs and Pipelines)
+# ============================================
+resources:
+  jobs:
+    # Main ETL Pipeline Job: Bronze → Silver → Gold → Tests
+    ecommerce_etl_pipeline:
+      name: "E-Commerce ETL Pipeline - ${target}"
+      description: "End-to-end ETL pipeline: Bronze ingestion → Silver transformation → Gold star schema → Data quality tests"
+      
+      # Email notifications on failure
+      email_notifications:
+        on_failure:
+          - "kaveyarrasank@gmail.com"
+      
+      # Task definitions (executed in dependency order)
+      tasks:
+        
+        # Task 1: Bronze Layer - Load raw data from CSV files
+        - task_key: bronze_ingestion
+          description: "Load 9 CSV files from volume into Bronze Delta tables"
+          notebook_task:
+            notebook_path: ./bronze/01_load_all_tables.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
+          
+        # Task 2: Silver Layer - Transform and clean data (depends on Bronze)
+        - task_key: silver_transformation
+          description: "Transform Bronze data into clean Silver tables with referential integrity"
+          depends_on:
+            - task_key: bronze_ingestion
+          notebook_task:
+            notebook_path: ./silver/01_transform_all_tables.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
+          
+        # Task 3: Gold Layer - Build star schema (depends on Silver)
+        - task_key: gold_star_schema
+          description: "Build Gold star schema with business metrics"
+          depends_on:
+            - task_key: silver_transformation
+          notebook_task:
+            notebook_path: ./gold/01_build_star_schema.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
+          
+        # Task 4: Run pytest data quality tests (depends on Gold)
+        - task_key: data_quality_tests
+          description: "Run 116 pytest data quality tests across all layers"
+          depends_on:
+            - task_key: gold_star_schema
+          notebook_task:
+            notebook_path: ./tests/run_tests.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
+
+# ============================================
+# TARGETS (Environment-specific configuration)
+# ============================================
+targets:
+  
+  # Development environment (default)
+  dev:
+    default: true
+    description: "Development environment for testing and iteration"
+    workspace:
+      host: https://dbc-5c760729-3532.cloud.databricks.com
+    resources:
+      jobs:
+        ecommerce_etl_pipeline:
+          name: "E-Commerce ETL Pipeline - DEV"
+          schedule:
+            quartz_cron_expression: "0 0 8 * * ?"  # Daily at 8 AM
+            timezone: "UTC"
+            pause_status: PAUSED  # Start paused (manual trigger for dev)
+  
+  # Production environment
+  prod:
+    description: "Production environment for scheduled pipeline execution"
+    workspace:
+      host: https://dbc-5c760729-3532.cloud.databricks.com
+    resources:
+      jobs:
+        ecommerce_etl_pipeline:
+          name: "E-Commerce ETL Pipeline - PROD"
+          schedule:
+            quartz_cron_expression: "0 0 6 * * ?"  # Daily at 6 AM
+            timezone: "UTC"
+            pause_status: UNPAUSED  # Auto-run in production
+          
+          # Production uses different catalog/schema
+          variables:
+            catalog_name: "workspace"
+            schema_name: "ecommerce_project_prod"
+          
+          # Production: send alerts on failure
+          email_notifications:
+            on_failure:
+              - "kaveyarrasank@gmail.com"
+            on_success:
+              - "kaveyarrasank@gmail.com"
