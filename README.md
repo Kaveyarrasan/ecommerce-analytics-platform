@@ -52,8 +52,6 @@
 
 ### ADR-001: Medallion Architecture (Bronze → Silver → Gold)
 
-**Status**: Accepted
-
 **Context**: We need to process raw e-commerce data from 9 CSV files into business-ready analytics tables.
 
 **Decision**: Use Databricks medallion architecture with three layers.
@@ -73,8 +71,6 @@
 ---
 
 ### ADR-002: Batch Ingestion (COPY INTO) vs Streaming (Auto Loader)
-
-**Status**: Accepted
 
 **Context**: Bronze layer needs to load CSV files from volume.
 
@@ -97,8 +93,6 @@
 ---
 
 ### ADR-003: Star Schema for Gold Layer
-
-**Status**: Accepted
 
 **Context**: Gold layer needs dimensional model for analytics.
 
@@ -140,8 +134,6 @@
 
 ### ADR-004: Orchestration - Lakeflow Jobs
 
-**Status**: Accepted
-
 **Context**: Need to orchestrate Bronze → Silver → Gold pipeline execution.
 
 **Decision**: Use Lakeflow Jobs (not Pipelines) for this project.
@@ -163,8 +155,6 @@
 ---
 
 ### ADR-005: DevOps - Git + DABs (CI/CD)
-
-**Status**: Accepted
 
 **Context**: Need version control and CI/CD for the project.
 
