@@ -99,7 +99,6 @@ targets:
   # Development environment (default)
   dev:
     default: true
-    description: "Development environment for testing and iteration"
     workspace:
       host: https://dbc-5c760729-3532.cloud.databricks.com
     resources:
@@ -108,12 +107,11 @@ targets:
           name: "E-Commerce ETL Pipeline - DEV"
           schedule:
             quartz_cron_expression: "0 0 8 * * ?"  # Daily at 8 AM
-            timezone: "UTC"
+            timezone_id: "UTC"
             pause_status: PAUSED  # Start paused (manual trigger for dev)
   
   # Production environment
   prod:
-    description: "Production environment for scheduled pipeline execution"
     workspace:
       host: https://dbc-5c760729-3532.cloud.databricks.com
     resources:
@@ -122,13 +120,8 @@ targets:
           name: "E-Commerce ETL Pipeline - PROD"
           schedule:
             quartz_cron_expression: "0 0 6 * * ?"  # Daily at 6 AM
-            timezone: "UTC"
+            timezone_id: "UTC"
             pause_status: UNPAUSED  # Auto-run in production
-          
-          # Production uses different catalog/schema
-          variables:
-            catalog_name: "workspace"
-            schema_name: "ecommerce_project_prod"
           
           # Production: send alerts on failure
           email_notifications:
