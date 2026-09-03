@@ -60,36 +60,34 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
           databricks --version
 
-      # Step 3: Configure Databricks authentication
-      # Uses DATABRICKS_TOKEN secret stored in GitHub Secrets
-      - name: Configure Databricks CLI
-        run: |
-          echo "[DEFAULT]" > ~/.databrickscfg
-          echo "host = ${{ env.DATABRICKS_HOST }}" >> ~/.databrickscfg
-          echo "token = ${{ secrets.DATABRICKS_TOKEN }}" >> ~/.databrickscfg
-
-      # Step 4: Validate DABs configuration
+      # Step 3: Validate DABs configuration
       - name: Validate bundle
+        env:
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
           echo "🔍 Validating DABs configuration..."
           databricks bundle validate -t ${{ env.BUNDLE_TARGET }}
           echo "✅ Bundle validation passed!"
 
-      # Step 5: Deploy bundle to target environment
+      # Step 4: Deploy bundle to target environment
       - name: Deploy bundle
+        env:
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
           echo "🚀 Deploying to ${{ env.BUNDLE_TARGET }} environment..."
           databricks bundle deploy -t ${{ env.BUNDLE_TARGET }}
           echo "✅ Deployment complete!"
 
-      # Step 6: Run the ETL pipeline job
+      # Step 5: Run the ETL pipeline job
       - name: Run ETL pipeline
+        env:
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
           echo "🔄 Running E-Commerce ETL Pipeline..."
           databricks bundle run -t ${{ env.BUNDLE_TARGET }} ecommerce_etl_pipeline
           echo "✅ ETL Pipeline completed!"
 
-      # Step 7: Report results
+      # Step 6: Report results
       - name: Report deployment status
         if: always()
         run: |
