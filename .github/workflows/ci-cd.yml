@@ -14,10 +14,10 @@
 # Architecture Decision (ADR-005): GitHub Actions + DABs replaces Jenkins
 #
 # Node.js Compatibility (Updated: 2026-09-03):
-#   - Runner: ubuntu-24.04 (comes with Node.js 20.x LTS)
-#   - Actions: checkout@v4 and setup-python@v5 use Node.js 20
-#   - All actions are compatible with GitHub's Node.js 20 requirement
-#   - No conflicts between runner Node.js (20.x) and action requirements
+#   - Runner: ubuntu-24.04 (comes with Node.js 24.x)
+#   - Actions: checkout@v4 and setup-python@v5 now support Node.js 24
+#   - GitHub deprecated Node.js 20 on 2025-09-19
+#   - All actions updated to Node.js 24 compatibility
 # ============================================================================
 
 name: E-Commerce Analytics CI/CD
@@ -53,21 +53,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up Python with dependency caching
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'  # Cache pip dependencies for faster builds
-
-      # Step 3: Install dependencies
-      - name: Install dependencies
+      # Step 2: Install the NEW Databricks CLI (required for 'bundle' commands)
+      # NOTE: The old 'databricks-cli' Python package does NOT support bundles
+      - name: Install Databricks CLI
         run: |
-          python -m pip install --upgrade pip
-          pip install databricks-cli
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
           databricks --version
 
-      # Step 4: Configure Databricks authentication
+      # Step 3: Configure Databricks authentication
       # Uses DATABRICKS_TOKEN secret stored in GitHub Secrets
       - name: Configure Databricks CLI
         run: |
@@ -75,28 +68,28 @@ jobs:
           echo "host = ${{ env.DATABRICKS_HOST }}" >> ~/.databrickscfg
           echo "token = ${{ secrets.DATABRICKS_TOKEN }}" >> ~/.databrickscfg
 
-      # Step 5: Validate DABs configuration
+      # Step 4: Validate DABs configuration
       - name: Validate bundle
         run: |
           echo "🔍 Validating DABs configuration..."
           databricks bundle validate -t ${{ env.BUNDLE_TARGET }}
           echo "✅ Bundle validation passed!"
 
-      # Step 6: Deploy bundle to target environment
+      # Step 5: Deploy bundle to target environment
       - name: Deploy bundle
         run: |
           echo "🚀 Deploying to ${{ env.BUNDLE_TARGET }} environment..."
           databricks bundle deploy -t ${{ env.BUNDLE_TARGET }}
           echo "✅ Deployment complete!"
 
-      # Step 7: Run the ETL pipeline job
+      # Step 6: Run the ETL pipeline job
       - name: Run ETL pipeline
         run: |
           echo "🔄 Running E-Commerce ETL Pipeline..."
           databricks bundle run -t ${{ env.BUNDLE_TARGET }} ecommerce_etl_pipeline
           echo "✅ ETL Pipeline completed!"
 
-      # Step 8: Report results
+      # Step 7: Report results
       - name: Report deployment status
         if: always()
         run: |
